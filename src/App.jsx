@@ -463,7 +463,7 @@ export default function NavePromptStudio() {
         )}
 
         {!isMobile&&(
-          <div style={{width:"230px",flexShrink:0,borderRight:"1px solid rgba(255,255,255,0.05)",padding:"24px 14px",display:"flex",flexDirection:"column",background:"#0d0d0d",overflow:"hidden"}}>
+          <div style={{width:"230px",flexShrink:0,borderRight:"1px solid rgba(255,255,255,0.05)",padding:"24px 14px",display:"flex",flexDirection:"column",background:"#0d0d0d",overflow:"auto"}}>
             <SidebarContent/>
           </div>
         )}
