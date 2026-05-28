@@ -4,6 +4,13 @@ const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 const GROQ_MODEL = "llama-3.3-70b-versatile";
 const GROQ_VISION_MODEL = "llama-3.2-11b-vision-preview";
 
+const IMAGE_MODELS = [
+  { id: "flux-pro",      label: "FLUX Pro",      desc: "Melhor qualidade geral" },
+  { id: "flux-realism",  label: "FLUX Realism",  desc: "Fotorrealista" },
+  { id: "flux",          label: "FLUX",           desc: "Rápido e versátil" },
+  { id: "turbo",         label: "Turbo",          desc: "Mais rápido" },
+];
+
 const CATEGORIES = [
   { id: "all",    label: "Geral",           icon: "✦", desc: "Prompt versátil para qualquer finalidade criativa" },
   { id: "art",    label: "Arte",            icon: "◈", desc: "Ilustrações, concept art, pinturas digitais" },
@@ -137,29 +144,63 @@ function CopyButton({ text }) {
   );
 }
 
-function ImageMessage({ prompt }) {
+function ImageMessage({ prompt, model = "flux-pro" }) {
   const [status, setStatus] = useState("loading");
-  const encoded = encodeURIComponent(prompt);
-  const url = `https://image.pollinations.ai/prompt/${encoded}?width=768&height=512&nologo=true&enhance=true&model=flux`;
+  const [currentModel, setCurrentModel] = useState(model);
+  const [imgKey, setImgKey] = useState(0);
+
+  const getUrl = (m) => {
+    const encoded = encodeURIComponent(prompt);
+    return `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=768&nologo=true&enhance=true&model=${m}&seed=${imgKey}`;
+  };
+
+  const regenerate = (newModel) => {
+    setStatus("loading");
+    setCurrentModel(newModel);
+    setImgKey(k => k + 1);
+  };
+
+  const url = getUrl(currentModel);
+
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"8px",flexWrap:"wrap",gap:"7px"}}>
         <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
           <span style={{fontSize:"10px",color:"rgba(255,255,255,0.2)",letterSpacing:"1.2px",textTransform:"uppercase"}}>Imagem Gerada</span>
-          <span style={{fontSize:"9.5px",background:"rgba(124,111,224,0.1)",color:"rgba(160,150,255,0.75)",padding:"2px 7px",borderRadius:"4px",letterSpacing:"0.5px",textTransform:"uppercase"}}>FLUX</span>
+          <span style={{fontSize:"9.5px",background:"rgba(124,111,224,0.1)",color:"rgba(160,150,255,0.75)",padding:"2px 7px",borderRadius:"4px",letterSpacing:"0.5px",textTransform:"uppercase"}}>{IMAGE_MODELS.find(m=>m.id===currentModel)?.label||"FLUX"}</span>
         </div>
-        {status==="done"&&(
-          <a href={url} download target="_blank" rel="noreferrer" style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",color:"rgba(255,255,255,0.4)",padding:"5px 12px",borderRadius:"6px",fontSize:"11px",fontFamily:"'Space Grotesk',sans-serif",textDecoration:"none",display:"flex",alignItems:"center",gap:"5px"}}>↓ Baixar</a>
-        )}
+        <div style={{display:"flex",gap:"6px",alignItems:"center",flexWrap:"wrap"}}>
+          {status==="done"&&(
+            <button onClick={()=>regenerate(currentModel)} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"rgba(255,255,255,0.35)",padding:"5px 10px",borderRadius:"6px",fontSize:"11px",fontFamily:"'Space Grotesk',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",gap:"4px"}}>↻ Gerar novamente</button>
+          )}
+          {status==="done"&&(
+            <a href={url} download target="_blank" rel="noreferrer" style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",color:"rgba(255,255,255,0.4)",padding:"5px 12px",borderRadius:"6px",fontSize:"11px",fontFamily:"'Space Grotesk',sans-serif",textDecoration:"none",display:"flex",alignItems:"center",gap:"5px"}}>↓ Baixar</a>
+          )}
+        </div>
       </div>
+
+      {/* Model selector */}
+      <div style={{display:"flex",gap:"4px",marginBottom:"8px",flexWrap:"wrap"}}>
+        {IMAGE_MODELS.map(m=>(
+          <button key={m.id} onClick={()=>regenerate(m.id)} title={m.desc} style={{
+            cursor:"pointer",
+            background:currentModel===m.id?"rgba(124,111,224,0.15)":"transparent",
+            border:`1px solid ${currentModel===m.id?"rgba(124,111,224,0.35)":"rgba(255,255,255,0.08)"}`,
+            color:currentModel===m.id?"rgba(180,170,255,0.9)":"rgba(255,255,255,0.3)",
+            padding:"3px 10px",borderRadius:"5px",fontSize:"10.5px",
+            fontFamily:"'Space Grotesk',sans-serif",transition:"all 0.15s",
+          }}>{m.label}</button>
+        ))}
+      </div>
+
       {status==="loading"&&(
         <div style={{background:"rgba(255,255,255,0.025)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:"10px",padding:"32px",display:"flex",flexDirection:"column",alignItems:"center",gap:"12px"}}>
           <TypingDots/>
-          <p style={{fontSize:"12px",color:"rgba(255,255,255,0.25)",fontFamily:"'Space Grotesk',sans-serif"}}>Gerando com FLUX...</p>
+          <p style={{fontSize:"12px",color:"rgba(255,255,255,0.25)",fontFamily:"'Space Grotesk',sans-serif"}}>Gerando com {IMAGE_MODELS.find(m=>m.id===currentModel)?.label}...</p>
         </div>
       )}
-      <img src={url} alt={prompt} onLoad={()=>setStatus("done")} onError={()=>setStatus("error")} style={{display:status==="done"?"block":"none",width:"100%",borderRadius:"10px",border:"1px solid rgba(255,255,255,0.07)"}}/>
-      {status==="error"&&<div style={{background:"rgba(255,80,80,0.05)",border:"1px solid rgba(255,80,80,0.15)",borderRadius:"10px",padding:"16px",fontSize:"13px",color:"rgba(255,120,120,0.7)",fontFamily:"'Space Grotesk',sans-serif"}}>Erro ao gerar imagem. Tente novamente.</div>}
+      <img key={imgKey} src={url} alt={prompt} onLoad={()=>setStatus("done")} onError={()=>setStatus("error")} style={{display:status==="done"?"block":"none",width:"100%",borderRadius:"10px",border:"1px solid rgba(255,255,255,0.07)"}}/>
+      {status==="error"&&<div style={{background:"rgba(255,80,80,0.05)",border:"1px solid rgba(255,80,80,0.15)",borderRadius:"10px",padding:"16px",fontSize:"13px",color:"rgba(255,120,120,0.7)",fontFamily:"'Space Grotesk',sans-serif"}}>Erro ao gerar. Tente outro modelo.</div>}
     </div>
   );
 }
