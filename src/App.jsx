@@ -144,18 +144,37 @@ function CopyButton({ text }) {
   );
 }
 
+function Lightbox({ url, onClose }) {
+  useEffect(() => {
+    const handler = (e) => { if(e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+  return (
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px",cursor:"zoom-out"}}>
+      <div onClick={e=>e.stopPropagation()} style={{position:"relative",maxWidth:"95vw",maxHeight:"95vh"}}>
+        <img src={url} alt="" style={{maxWidth:"95vw",maxHeight:"90vh",borderRadius:"10px",objectFit:"contain",border:"1px solid rgba(255,255,255,0.1)"}}/>
+        <button onClick={onClose} style={{position:"absolute",top:"-14px",right:"-14px",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"#fff",borderRadius:"50%",width:"30px",height:"30px",cursor:"pointer",fontSize:"16px",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+        <a href={url} download target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{position:"absolute",bottom:"12px",right:"12px",background:"rgba(0,0,0,0.7)",border:"1px solid rgba(255,255,255,0.2)",color:"rgba(255,255,255,0.8)",padding:"7px 14px",borderRadius:"7px",fontSize:"12px",fontFamily:"'Space Grotesk',sans-serif",textDecoration:"none",display:"flex",alignItems:"center",gap:"5px"}}>↓ Baixar HD</a>
+      </div>
+    </div>
+  );
+}
+
 function ImageMessage({ prompt, model = "flux-pro" }) {
   const [status, setStatus] = useState("loading");
   const [currentModel, setCurrentModel] = useState(model);
   const [imgKey, setImgKey] = useState(0);
+  const [lightbox, setLightbox] = useState(false);
 
   const getUrl = (m) => {
     const encoded = encodeURIComponent(prompt);
-    return `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=768&nologo=true&enhance=true&model=${m}&seed=${imgKey}`;
+    return `https://image.pollinations.ai/prompt/${encoded}?width=1920&height=1080&nologo=true&enhance=true&model=${m}&seed=${imgKey}`;
   };
 
   const regenerate = (newModel) => {
     setStatus("loading");
+    setLightbox(false);
     setCurrentModel(newModel);
     setImgKey(k => k + 1);
   };
@@ -164,42 +183,34 @@ function ImageMessage({ prompt, model = "flux-pro" }) {
 
   return (
     <div>
+      {lightbox && <Lightbox url={url} onClose={()=>setLightbox(false)}/>}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"8px",flexWrap:"wrap",gap:"7px"}}>
         <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
           <span style={{fontSize:"10px",color:"rgba(255,255,255,0.2)",letterSpacing:"1.2px",textTransform:"uppercase"}}>Imagem Gerada</span>
           <span style={{fontSize:"9.5px",background:"rgba(124,111,224,0.1)",color:"rgba(160,150,255,0.75)",padding:"2px 7px",borderRadius:"4px",letterSpacing:"0.5px",textTransform:"uppercase"}}>{IMAGE_MODELS.find(m=>m.id===currentModel)?.label||"FLUX"}</span>
         </div>
         <div style={{display:"flex",gap:"6px",alignItems:"center",flexWrap:"wrap"}}>
-          {status==="done"&&(
-            <button onClick={()=>regenerate(currentModel)} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"rgba(255,255,255,0.35)",padding:"5px 10px",borderRadius:"6px",fontSize:"11px",fontFamily:"'Space Grotesk',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",gap:"4px"}}>↻ Gerar novamente</button>
-          )}
-          {status==="done"&&(
-            <a href={url} download target="_blank" rel="noreferrer" style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",color:"rgba(255,255,255,0.4)",padding:"5px 12px",borderRadius:"6px",fontSize:"11px",fontFamily:"'Space Grotesk',sans-serif",textDecoration:"none",display:"flex",alignItems:"center",gap:"5px"}}>↓ Baixar</a>
-          )}
+          {status==="done"&&<button onClick={()=>regenerate(currentModel)} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"rgba(255,255,255,0.35)",padding:"5px 10px",borderRadius:"6px",fontSize:"11px",fontFamily:"'Space Grotesk',sans-serif",cursor:"pointer"}}>↻ Regerar</button>}
+          {status==="done"&&<a href={url} download target="_blank" rel="noreferrer" style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",color:"rgba(255,255,255,0.4)",padding:"5px 12px",borderRadius:"6px",fontSize:"11px",fontFamily:"'Space Grotesk',sans-serif",textDecoration:"none",display:"flex",alignItems:"center",gap:"5px"}}>↓ Baixar</a>}
         </div>
       </div>
-
-      {/* Model selector */}
       <div style={{display:"flex",gap:"4px",marginBottom:"8px",flexWrap:"wrap"}}>
         {IMAGE_MODELS.map(m=>(
-          <button key={m.id} onClick={()=>regenerate(m.id)} title={m.desc} style={{
-            cursor:"pointer",
-            background:currentModel===m.id?"rgba(124,111,224,0.15)":"transparent",
-            border:`1px solid ${currentModel===m.id?"rgba(124,111,224,0.35)":"rgba(255,255,255,0.08)"}`,
-            color:currentModel===m.id?"rgba(180,170,255,0.9)":"rgba(255,255,255,0.3)",
-            padding:"3px 10px",borderRadius:"5px",fontSize:"10.5px",
-            fontFamily:"'Space Grotesk',sans-serif",transition:"all 0.15s",
-          }}>{m.label}</button>
+          <button key={m.id} onClick={()=>regenerate(m.id)} title={m.desc} style={{cursor:"pointer",background:currentModel===m.id?"rgba(124,111,224,0.15)":"transparent",border:`1px solid ${currentModel===m.id?"rgba(124,111,224,0.35)":"rgba(255,255,255,0.08)"}`,color:currentModel===m.id?"rgba(180,170,255,0.9)":"rgba(255,255,255,0.3)",padding:"3px 10px",borderRadius:"5px",fontSize:"10.5px",fontFamily:"'Space Grotesk',sans-serif",transition:"all 0.15s"}}>{m.label}</button>
         ))}
       </div>
-
       {status==="loading"&&(
         <div style={{background:"rgba(255,255,255,0.025)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:"10px",padding:"32px",display:"flex",flexDirection:"column",alignItems:"center",gap:"12px"}}>
           <TypingDots/>
-          <p style={{fontSize:"12px",color:"rgba(255,255,255,0.25)",fontFamily:"'Space Grotesk',sans-serif"}}>Gerando com {IMAGE_MODELS.find(m=>m.id===currentModel)?.label}...</p>
+          <p style={{fontSize:"12px",color:"rgba(255,255,255,0.25)",fontFamily:"'Space Grotesk',sans-serif"}}>Gerando em alta resolução com {IMAGE_MODELS.find(m=>m.id===currentModel)?.label}...</p>
         </div>
       )}
-      <img key={imgKey} src={url} alt={prompt} onLoad={()=>setStatus("done")} onError={()=>setStatus("error")} style={{display:status==="done"?"block":"none",width:"100%",borderRadius:"10px",border:"1px solid rgba(255,255,255,0.07)"}}/>
+      <div style={{position:"relative",cursor:status==="done"?"zoom-in":"default"}} onClick={()=>status==="done"&&setLightbox(true)}>
+        <img key={imgKey} src={url} alt={prompt} onLoad={()=>setStatus("done")} onError={()=>setStatus("error")} style={{display:status==="done"?"block":"none",width:"100%",borderRadius:"10px",border:"1px solid rgba(255,255,255,0.07)"}}/>
+        {status==="done"&&(
+          <div style={{position:"absolute",bottom:"10px",left:"10px",background:"rgba(0,0,0,0.6)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:"6px",padding:"4px 9px",fontSize:"10.5px",color:"rgba(255,255,255,0.6)",fontFamily:"'Space Grotesk',sans-serif",pointerEvents:"none"}}>🔍 Clique para ampliar</div>
+        )}
+      </div>
       {status==="error"&&<div style={{background:"rgba(255,80,80,0.05)",border:"1px solid rgba(255,80,80,0.15)",borderRadius:"10px",padding:"16px",fontSize:"13px",color:"rgba(255,120,120,0.7)",fontFamily:"'Space Grotesk',sans-serif"}}>Erro ao gerar. Tente outro modelo.</div>}
     </div>
   );
